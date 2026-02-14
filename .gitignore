@@ -1,0 +1,15 @@
+# Python Virtual Environment
+.venv/
+__pycache__/
+
+# Node/React dependencies
+node_modules/
+dist/
+
+# Local Environment secrets (security best practice)
+.env
+.env.local
+
+# IntelliJ specific files
+.idea/
+*.iws
