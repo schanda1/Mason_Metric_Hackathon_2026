@@ -13,3 +13,6 @@ dist/
 # IntelliJ specific files
 .idea/
 *.iws
+
+# Database Scripts
+mongo_upload.py
