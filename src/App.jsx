@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input"
 import ResultsView from './ResultsView';
 
 function App() {
-    // STATE: Tracks which "page" we are on
+    // Tracks which "page" you're on
     const [view, setView] = useState('search');
 
-    // STATE: Form Data
+    // Form Data
     const [subject, setSubject] = useState("");
     const [courseNum, setCourseNum] = useState("");
     const [professor, setProfessor] = useState("");
@@ -19,16 +19,13 @@ function App() {
         <div className="min-h-screen bg-gradient-to-b from-pink-100 to-red-100 text-slate-800 p-10 font-sans">
             <div className="max-w-6xl mx-auto">
 
-                {/* VIEW 1: SEARCH FORM */}
+                {/*SEARCH FORM */}
                 {view === 'search' && (
                     <div className="animate-in fade-in zoom-in duration-300">
                         <header className="text-center mb-12">
                             <h1 className="text-5xl font-extrabold tracking-tight text-red-600 mb-2 drop-shadow-sm">
-                                Find Your Perfect Match ❤️
+                                Find Your Perfect Professor Match ❤️
                             </h1>
-                            <p className="text-pink-600 font-medium text-lg">
-                                (And by match, we mean a professor who gives A's)
-                            </p>
                         </header>
 
                         <div className="flex flex-wrap justify-center gap-8">
@@ -44,7 +41,6 @@ function App() {
                                     <Input
                                         placeholder="e.g. CYSE"
                                         value={subject}
-                                        // FIX: Removed .toUpperCase() so you can type normally
                                         onChange={(e) => setSubject(e.target.value)}
                                         className="bg-slate-50 border-pink-200 focus-visible:ring-pink-400 text-lg uppercase placeholder:normal-case"
                                     />
@@ -63,7 +59,6 @@ function App() {
                                     <Input
                                         placeholder="e.g. 214"
                                         value={courseNum}
-                                        // FIX: Removed .trim() so you can type spaces if needed
                                         onChange={(e) => setCourseNum(e.target.value)}
                                         className="bg-slate-50 border-pink-200 focus-visible:ring-pink-400 text-lg"
                                     />
@@ -101,7 +96,7 @@ function App() {
                     </div>
                 )}
 
-                {/* VIEW 2: RESULTS */}
+                {/* RESULTS */}
                 {view === 'results' && (
                     <ResultsView
                         subject={subject}

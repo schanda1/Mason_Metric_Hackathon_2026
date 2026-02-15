@@ -1,79 +1,57 @@
 import { useMemo, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-
-// IMPORTANT: Import the NEW file we just created!
-// (If your script saved it in src/assets, this path is correct)
 import gradeData from "./assets/final_data.json";
+import DonutChart from './DonutChart';
 
 const ResultsView = ({ subject, courseNum, initialProfessor, onBack }) => {
     const [selectedProfessor, setSelectedProfessor] = useState(initialProfessor || null);
 
-    // 1. FILTER: Specific Column Match (Safe & Clean!)
+    //Filters data
     const courseData = useMemo(() => {
         return gradeData.filter(item => {
-            // Now we can trust the keys because the Python script fixed them!
-            const dataSubject = item.subject; // Already uppercase
-            const searchSubject = subject.toUpperCase().trim();
-
-            const dataCourse = String(item.course_num);
-            const searchCourse = courseNum.trim();
-
-            // Exact Match Logic
-            return dataSubject === searchSubject && dataCourse === searchCourse;
+            return item.subject === subject.toUpperCase().trim() &&
+                String(item.course_num) === courseNum.trim();
         });
     }, [subject, courseNum]);
 
-    // 2. AGGREGATE: Group by Instructor
+    // Aggregates datat
+    const courseStats = useMemo(() => {
+        let acc = { Passed: 0, Failed: 0, Total: 0 };
+        courseData.forEach(row => {
+            acc.Passed += (row.A + row.B + row.C);
+            acc.Failed += (row.D + row.F + row.W);
+            acc.Total += row.total_students;
+        });
+        return acc;
+    }, [courseData]);
+
+    // Professor list - Bottom Half of Screen
     const professorList = useMemo(() => {
         const groups = {};
-
         courseData.forEach(row => {
-            const instructorName = row.instructor;
+            const instr = row.instructor;
+            if (!groups[instr]) groups[instr] = { name: instr, totalStudents: 0, passed: 0, a_count: 0 };
 
-            if (!groups[instructorName]) {
-                groups[instructorName] = {
-                    name: instructorName,
-                    totalStudents: 0,
-                    passed: 0,
-                    a_count: 0
-                };
-            }
-
-            // Grades are now simple integers (0, 5, 10, etc.)
-            const a = row.A;
-            const b = row.B;
-            const c = row.C;
-            const total = row.total_students;
-
-            groups[instructorName].totalStudents += total;
-            groups[instructorName].passed += (a + b + c);
-            groups[instructorName].a_count += a;
+            groups[instr].totalStudents += row.total_students;
+            groups[instr].passed += (row.A + row.B + row.C);
+            groups[instr].a_count += row.A;
         });
-
-        // Sort by "A Rate" (Best professors at the top)
         return Object.values(groups).map(p => ({
             ...p,
             passRate: p.totalStudents > 0 ? ((p.passed / p.totalStudents) * 100).toFixed(0) : 0,
             aRate: p.totalStudents > 0 ? ((p.a_count / p.totalStudents) * 100).toFixed(0) : 0
         })).sort((a, b) => b.aRate - a.aRate);
-
     }, [courseData]);
 
-    // 3. STATS: For Selected Professor (Detail View)
+    // Individual Professor Data
     const activeStats = useMemo(() => {
         if (!selectedProfessor) return null;
-
         const relevantData = courseData.filter(i => i.instructor === selectedProfessor);
-
         let acc = { A: 0, B: 0, C: 0, D: 0, F: 0, W: 0, Total: 0 };
         relevantData.forEach(row => {
-            acc.A += row.A;
-            acc.B += row.B;
-            acc.C += row.C;
-            acc.D += row.D;
-            acc.F += row.F;
-            acc.W += row.W;
+            acc.A += row.A; acc.B += row.B; acc.C += row.C;
+            acc.D += row.D; acc.F += row.F; acc.W += row.W;
             acc.Total += row.total_students;
         });
         return acc;
@@ -81,77 +59,51 @@ const ResultsView = ({ subject, courseNum, initialProfessor, onBack }) => {
 
     const getPercent = (val, total) => total > 0 ? ((val / total) * 100).toFixed(1) : 0;
 
-    // --- NO MATCHES SCREEN ---
+    // If no matches
     if (courseData.length === 0) {
         return (
             <div className="p-10 text-center animate-in fade-in zoom-in duration-300">
                 <h2 className="text-4xl font-extrabold text-slate-300 mb-4">💔</h2>
                 <h2 className="text-2xl font-bold text-slate-600 mb-2">No Matches Found</h2>
+                {/* FIX: Uppercase here too for consistency */}
                 <p className="text-slate-400 mb-8">
-                    We couldn't find any data for <strong>{subject} {courseNum}</strong>.
+                    We couldn't find any data for <strong>{subject.toUpperCase()} {courseNum}</strong>.
                 </p>
-                <div className="bg-slate-100 p-4 rounded text-xs text-slate-500 max-w-md mx-auto mb-4">
-                    <strong>Debug Tip:</strong> Check if your search matches this format:
-                    <br/>Subject: "{subject.toUpperCase()}" (e.g. IT)
-                    <br/>Course: "{courseNum}" (e.g. 214)
-                </div>
-                <Button onClick={onBack} variant="outline" className="border-red-400 text-red-500 hover:bg-red-50">
-                    Try Another Search
-                </Button>
+                <Button onClick={onBack} variant="outline" className="mt-4 border-red-400 text-red-500 hover:bg-red-50">Try Another Search</Button>
             </div>
         )
     }
 
-    // --- RENDER: DETAIL VIEW ---
+    //Renders Professor Detailed View
     if (selectedProfessor && activeStats) {
         return (
             <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
                 <header className="text-center mb-10">
-                    <Button
-                        onClick={() => setSelectedProfessor(null)}
-                        variant="ghost"
-                        className="mb-4 text-pink-500 hover:text-pink-700 hover:bg-pink-50"
-                    >
-                        ← Back to Matches
-                    </Button>
-                    <h2 className="text-4xl font-extrabold text-red-600 mb-2">
-                        {selectedProfessor} ❤️
-                    </h2>
-                    <p className="text-slate-500 text-lg">
-                        {subject} {courseNum} Compatibility Report
-                    </p>
+                    <Button onClick={() => setSelectedProfessor(null)} variant="ghost" className="mb-4 text-pink-500 hover:text-pink-700 hover:bg-pink-50">← Back to List</Button>
+                    <h2 className="text-4xl font-extrabold text-red-600 mb-2">{selectedProfessor} ❤️</h2>
+                    <p className="text-slate-500 text-lg">{subject.toUpperCase()} {courseNum} Compatibility Report</p>
                 </header>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     <Card className="border-pink-300 border-4 shadow-xl">
-                        <CardHeader className="bg-pink-50">
-                            <CardTitle className="text-red-500 text-center">PASS RATE (A-C)</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6 text-center">
-                            <div className="text-6xl font-black text-pink-600 mb-4">
-                                {getPercent(activeStats.A + activeStats.B + activeStats.C, activeStats.Total)}%
-                            </div>
-                            <p className="text-slate-500">Students passed this class</p>
+                        <CardHeader className="bg-pink-50"><CardTitle className="text-red-500 text-center">PASS RATE</CardTitle></CardHeader>
+                        <CardContent className="pt-6 flex justify-center">
+                            <DonutChart
+                                passPercent={parseFloat(getPercent(activeStats.A+activeStats.B+activeStats.C, activeStats.Total))}
+                                failPercent={parseFloat(getPercent(activeStats.D+activeStats.F+activeStats.W, activeStats.Total))}
+                                size={200}
+                            />
                         </CardContent>
                     </Card>
-
                     <Card className="border-pink-300 border-4 shadow-xl">
-                        <CardHeader className="bg-pink-50">
-                            <CardTitle className="text-red-500 text-center">Grade Breakdown</CardTitle>
-                        </CardHeader>
+                        <CardHeader className="bg-pink-50"><CardTitle className="text-red-500 text-center">Grades</CardTitle></CardHeader>
                         <CardContent className="pt-6 space-y-3">
-                            {['A', 'B', 'C', 'D', 'F'].map((grade) => (
+                            {['A', 'B', 'C', 'D', 'F', 'W'].map((grade) => (
                                 <div key={grade} className="flex items-center gap-4">
                                     <span className="font-bold w-8 text-slate-700">{grade}</span>
                                     <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
-                                        <div
-                                            className="bg-red-400 h-full rounded-full transition-all duration-1000"
-                                            style={{ width: `${getPercent(activeStats[grade], activeStats.Total)}%` }}
-                                        />
+                                        <div className={`h-full rounded-full ${['A','B'].includes(grade)?'bg-green-400':['C'].includes(grade)?'bg-yellow-400':'bg-red-400'}`} style={{ width: `${getPercent(activeStats[grade], activeStats.Total)}%` }} />
                                     </div>
-                                    <span className="text-sm text-slate-500 w-12 text-right">
-                                        {getPercent(activeStats[grade], activeStats.Total)}%
-                                    </span>
+                                    <span className="text-sm text-slate-500 w-12 text-right">{getPercent(activeStats[grade], activeStats.Total)}%</span>
                                 </div>
                             ))}
                         </CardContent>
@@ -161,47 +113,60 @@ const ResultsView = ({ subject, courseNum, initialProfessor, onBack }) => {
         );
     }
 
-    // --- RENDER: LIST VIEW ---
-    return (
-        <div className="animate-in fade-in zoom-in duration-300 max-w-4xl mx-auto">
-            <header className="text-center mb-10">
-                <h2 className="text-4xl font-extrabold text-red-600 mb-2">
-                    {subject} {courseNum} Matches 💘
-                </h2>
-                <p className="text-pink-600 text-lg">
-                    We found {professorList.length} potential matches for you.
-                </p>
-            </header>
+    //Renders Main List View
+    const coursePassRate = courseStats.Total > 0 ? ((courseStats.Passed / courseStats.Total) * 100).toFixed(1) : 0;
+    const courseFailRate = courseStats.Total > 0 ? ((courseStats.Failed / courseStats.Total) * 100).toFixed(1) : 0;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    return (
+        <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 max-w-5xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-10 mb-12 bg-white p-8 rounded-2xl shadow-xl border-2 border-pink-100">
+                <div className="text-center md:text-left">
+                    <Button onClick={onBack} variant="ghost" className="text-pink-400 mb-2 p-0 hover:bg-transparent hover:text-pink-600">← New Search</Button>
+
+                    <h2 className="text-5xl font-black text-slate-800 mb-2">{subject.toUpperCase()} {courseNum}</h2>
+
+                    <p className="text-slate-500 text-lg">Analyzed {courseStats.Total} student records</p>
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <DonutChart passPercent={parseFloat(coursePassRate)} failPercent={parseFloat(courseFailRate)} size={160} />
+                    <div className="text-sm space-y-2">
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-green-400 rounded-full"></div> Passed: {courseStats.Passed}</div>
+                        <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-400 rounded-full"></div> Failed/W: {courseStats.Failed}</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Professor List */}
+            <h3 className="text-2xl font-bold text-slate-700 mb-6 pl-2 border-l-4 border-red-500">
+                Select a Professor ({professorList.length} Found):
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {professorList.map((prof) => (
                     <Card
                         key={prof.name}
                         onClick={() => setSelectedProfessor(prof.name)}
-                        className="cursor-pointer hover:scale-105 transition-transform border-2 border-pink-100 hover:border-red-400 hover:shadow-lg"
+                        className="cursor-pointer hover:scale-105 transition-transform border-2 border-pink-50 hover:border-red-400 hover:shadow-xl group bg-white"
                     >
-                        <CardContent className="p-6 flex justify-between items-center">
+                        <CardContent className="p-6 flex flex-col justify-between h-full">
                             <div>
-                                <h3 className="font-bold text-xl text-slate-800">{prof.name}</h3>
-                                <p className="text-slate-500 text-sm">{prof.totalStudents} students graded</p>
+                                <h3 className="font-bold text-xl text-slate-800 group-hover:text-red-600 transition-colors mb-1">{prof.name}</h3>
+                                <p className="text-slate-400 text-xs uppercase tracking-wide font-bold">{prof.totalStudents} Graded</p>
                             </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-black text-red-500">{prof.aRate}%</div>
-                                <div className="text-xs text-pink-400 font-bold">A-RATE</div>
+                            <div className="flex justify-between items-end mt-6">
+                                <div>
+                                    <div className="text-3xl font-black text-slate-800">{prof.passRate}%</div>
+                                    <div className="text-xs font-bold text-green-500">PASS RATE</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xl font-bold text-red-400">{prof.aRate}%</div>
+                                    <div className="text-xs font-bold text-red-300">A-RATE</div>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
                 ))}
-            </div>
-
-            <div className="mt-12 text-center">
-                <Button
-                    onClick={onBack}
-                    variant="outline"
-                    className="border-red-400 text-red-500 hover:bg-red-50"
-                >
-                    ← Search Again
-                </Button>
             </div>
         </div>
     );
