@@ -16,3 +16,6 @@ dist/
 
 # Database Scripts
 mongo_upload.py
+FOIA_COURSES.csv
+cleaned_grades.json
+./src/assets/cleaned_grades.json
